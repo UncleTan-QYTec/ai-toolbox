@@ -2,20 +2,24 @@
 
 // 配置
 const CONFIG = {
-    // Skywork API 配置 - 请替换为你的实际配置
-    skyworkApiUrl: 'https://api.skywork.ai/v1/ppt/generate',
-    skyworkApiKey: '', // 从环境变量或配置中获取
+    // 后端 API 地址（本地开发）
+    backendApiUrl: 'http://localhost:3000/api/ppt',
+    
+    // 生产环境 API 地址（部署时修改）
+    // backendApiUrl: 'https://your-domain.com/api/ppt',
     
     // 本地存储键
     storageKey: 'ppt_generator_history',
     
-    // 生成超时时间（毫秒）
-    timeout: 120000
+    // 轮询间隔（毫秒）
+    pollInterval: 3000
 };
 
 // 当前生成状态
 let currentGeneration = null;
 let startTime = null;
+let currentTaskId = null;
+let pollTimer = null;
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', () => {
@@ -50,21 +54,32 @@ async function generatePPT() {
     startTime = Date.now();
 
     try {
-        // 调用 Skywork API（或模拟）
-        const result = await callSkyworkAPI(topic, slideCount, style, language);
-        
-        // 显示结果
-        showResult(result);
-        
-        // 保存到历史记录
-        saveToHistory({
-            topic,
-            slideCount,
-            style,
-            language,
-            result,
-            timestamp: Date.now()
+        // 调用后端 API 创建任务
+        const response = await fetch(`${CONFIG.backendApiUrl}/generate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                topic,
+                slideCount: parseInt(slideCount),
+                style,
+                language
+            })
         });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || '创建任务失败');
+        }
+
+        const data = await response.json();
+        currentTaskId = data.taskId;
+
+        showToast('任务已创建，开始生成 PPT...', 'info');
+
+        // 开始轮询任务状态
+        startPolling(data.taskId);
 
     } catch (error) {
         console.error('生成失败:', error);
@@ -73,131 +88,96 @@ async function generatePPT() {
     }
 }
 
-// 调用 Skywork API
-async function callSkyworkAPI(topic, slideCount, style, language) {
-    // 如果没有配置 API Key，使用模拟数据
-    if (!CONFIG.skyworkApiKey) {
-        return await simulateGeneration(topic, slideCount, style, language);
-    }
+// 轮询任务状态
+function startPolling(taskId) {
+    pollTimer = setInterval(async () => {
+        try {
+            const response = await fetch(`${CONFIG.backendApiUrl}/status/${taskId}`);
+            const data = await response.json();
 
-    // 实际 API 调用
-    const response = await fetch(CONFIG.skyworkApiUrl, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${CONFIG.skyworkApiKey}`
+            if (!data.success) {
+                throw new Error('查询状态失败');
+            }
+
+            const task = data.task;
+
+            // 更新进度
+            updateProgress(task.progress, task.stage);
+
+            // 检查是否完成
+            if (task.status === 'completed') {
+                clearInterval(pollTimer);
+                pollTimer = null;
+
+                // 显示结果
+                showResult({
+                    slides: generatePreviewSlides(task.topic, task.stage),
+                    downloadUrl: `${CONFIG.backendApiUrl}/download/${taskId}`,
+                    pptId: taskId
+                });
+
+                // 保存到历史记录
+                saveToHistory({
+                    topic: task.topic,
+                    slideCount: 10,
+                    style: 'custom',
+                    language: 'zh',
+                    result: {
+                        slides: generatePreviewSlides(task.topic, task.stage),
+                        downloadUrl: task.downloadUrl || `${CONFIG.backendApiUrl}/download/${taskId}`
+                    },
+                    timestamp: Date.now()
+                });
+
+                showToast('PPT 生成完成！', 'success');
+
+            } else if (task.status === 'error') {
+                clearInterval(pollTimer);
+                pollTimer = null;
+                showToast(task.error || '生成失败', 'error');
+                showStep1();
+            }
+
+        } catch (error) {
+            console.error('轮询失败:', error);
+        }
+    }, CONFIG.pollInterval);
+}
+
+// 停止轮询
+function stopPolling() {
+    if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+    }
+}
+
+// 生成预览幻灯片（用于展示）
+function generatePreviewSlides(topic, stage) {
+    const slides = [
+        {
+            number: 1,
+            title: topic,
+            content: ['AI 自动生成演示文稿', 'Skywork PPT 技能驱动', '清月科技出品'],
+            type: 'cover'
         },
-        body: JSON.stringify({
-            topic,
-            slideCount: parseInt(slideCount),
-            style,
-            language
-        })
-    });
-
-    if (!response.ok) {
-        throw new Error('API 调用失败：' + response.statusText);
-    }
-
-    return await response.json();
-}
-
-// 模拟生成（演示用）
-async function simulateGeneration(topic, slideCount, style, language) {
-    // 模拟进度更新
-    updateProgress(10, '正在分析主题...');
-    await sleep(1000);
-    
-    updateProgress(30, '正在生成大纲...');
-    document.getElementById('loadStep1').classList.add('active');
-    await sleep(1500);
-    
-    updateProgress(60, '正在设计页面...');
-    document.getElementById('loadStep1').classList.remove('active');
-    document.getElementById('loadStep1').classList.add('completed');
-    document.getElementById('loadStep2').classList.add('active');
-    await sleep(1500);
-    
-    updateProgress(85, '正在优化排版...');
-    document.getElementById('loadStep2').classList.remove('active');
-    document.getElementById('loadStep2').classList.add('completed');
-    document.getElementById('loadStep3').classList.add('active');
-    await sleep(1000);
-    
-    updateProgress(100, '生成完成！');
-    document.getElementById('loadStep3').classList.remove('active');
-    document.getElementById('loadStep3').classList.add('completed');
-    await sleep(500);
-
-    // 生成模拟数据
-    const slides = [];
-    const slideCountNum = parseInt(slideCount);
-    
-    // 封面页
-    slides.push({
-        number: 1,
-        title: topic,
-        content: ['AI 自动生成演示文稿', `风格：${getStyleName(style)}`, `语言：${language === 'zh' ? '中文' : 'English'}`],
-        type: 'cover'
-    });
-
-    // 内容页
-    for (let i = 2; i <= slideCountNum; i++) {
-        slides.push({
-            number: i,
-            title: `第 ${i-1} 部分 - ${getRandomTitle(i-1)}`,
-            content: getRandomContent(),
+        {
+            number: 2,
+            title: '目录',
+            content: ['项目背景', '核心功能', '技术架构', '应用场景'],
             type: 'content'
-        });
-    }
-
-    // 结束页
-    slides.push({
-        number: slides.length + 1,
-        title: '感谢观看',
-        content: ['THANK YOU', '如有问题，欢迎交流'],
-        type: 'ending'
-    });
-
-    return {
-        slides,
-        downloadUrl: '#',
-        pptId: 'demo_' + Date.now()
-    };
-}
-
-// 辅助函数
-function getStyleName(style) {
-    const styles = {
-        business: '商务专业',
-        creative: '创意设计',
-        minimal: '简约现代',
-        education: '教育培训',
-        tech: '科技感'
-    };
-    return styles[style] || style;
-}
-
-function getRandomTitle(index) {
-    const titles = [
-        '背景介绍', '市场分析', '技术方案', '实施计划',
-        '团队介绍', '财务预测', '风险评估', '总结展望'
+        },
+        {
+            number: 3,
+            title: '项目背景',
+            content: ['市场需求分析', '用户痛点', '解决方案'],
+            type: 'content'
+        }
     ];
-    return titles[(index - 1) % titles.length];
+    return slides;
 }
 
-function getRandomContent() {
-    const contents = [
-        ['关键点一：详细说明内容', '关键点二：详细说明内容', '关键点三：详细说明内容'],
-        ['数据支持：XX% 增长率', '案例分享：成功项目示例', '趋势分析：未来发展方向'],
-        ['技术架构：系统组成说明', '核心功能：主要特性列表', '优势对比：与竞品差异']
-    ];
-    return contents[Math.floor(Math.random() * contents.length)];
-}
 
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
 
 // 更新进度
 function updateProgress(percent, text) {
@@ -254,23 +234,31 @@ function showResult(result) {
 
 // 下载 PPT
 function downloadPPT() {
-    if (!currentGeneration) {
+    if (!currentGeneration || !currentTaskId) {
         showToast('没有可下载的 PPT', 'error');
         return;
     }
 
-    // 实际项目中，这里应该调用后端 API 生成真实的 .pptx 文件
-    // 演示模式下，显示提示
-    showToast('演示模式：实际项目中将下载 .pptx 文件', 'info');
+    // 调用后端下载接口
+    const downloadUrl = `${CONFIG.backendApiUrl}/download/${currentTaskId}`;
     
-    // 模拟下载
-    // window.location.href = currentGeneration.downloadUrl;
+    // 创建临时链接触发下载
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = `PPT_${Date.now()}.pptx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showToast('开始下载 PPT...', 'success');
 }
 
 // 重新生成
 function regenerate() {
+    stopPolling();
     showStep1();
     currentGeneration = null;
+    currentTaskId = null;
 }
 
 // 编辑内容

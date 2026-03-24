@@ -1,290 +1,381 @@
 /**
  * AI PPT 生成器 - 后端服务
- * 调用 Skywork.ai API 生成 PPT
  * 
- * 使用方法：
- * 1. 安装依赖：npm install express cors dotenv
- * 2. 配置环境变量：cp .env.example .env (填入 Skywork API Key)
- * 3. 启动服务：node server.js
+ * 功能：
+ * 1. 接收前端请求
+ * 2. 调用 Skywork PPT 技能生成 PPT
+ * 3. 轮询进度并推送给前端
+ * 4. 返回下载链接
+ * 
+ * 使用方式：
+ * 1. npm install express cors uuid
+ * 2. node server.js
+ * 3. 前端配置 API 地址为 http://localhost:3000
  */
 
 const express = require('express');
 const cors = require('cors');
-const dotenv = require('dotenv');
-const axios = require('axios');
+const { v4: uuidv4 } = require('uuid');
+const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 中间件
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json());
 
-// Skywork API 配置
-const SKYWORK_CONFIG = {
-    apiKey: process.env.SKYWORK_API_KEY || '',
-    baseUrl: process.env.SKYWORK_API_URL || 'https://api.skywork.ai/v1',
-    model: process.env.SKYWORK_MODEL || 'skywork-ppt-v1'
-};
+// 任务存储（生产环境应该用 Redis/数据库）
+const tasks = new Map();
 
-// 健康检查
-app.get('/health', (req, res) => {
-    res.json({ 
-        status: 'ok', 
-        timestamp: new Date().toISOString(),
-        skyworkConfigured: !!SKYWORK_CONFIG.apiKey
-    });
-});
+// Skywork PPT 技能路径
+const SKYWORK_SKILL_DIR = '/home/klnhtt/.openclaw/workspace-coder/skills/skywork-ppt-1.0.3';
+const OUTPUT_DIR = '/tmp/ppt-outputs';
 
-// PPT 生成接口
-app.post('/api/ppt', async (req, res) => {
-    try {
-        const { topic, slide_count = 10, style = 'business', language = 'zh' } = req.body;
-
-        // 参数验证
-        if (!topic || topic.trim().length === 0) {
-            return res.status(400).json({
-                error: '主题不能为空',
-                code: 'INVALID_TOPIC'
-            });
-        }
-
-        if (slide_count < 5 || slide_count > 30) {
-            return res.status(400).json({
-                error: '页数必须在 5-30 之间',
-                code: 'INVALID_SLIDE_COUNT'
-            });
-        }
-
-        console.log(`[PPT Generate] Topic: ${topic}, Slides: ${slide_count}, Style: ${style}`);
-
-        // 如果配置了 Skywork API Key，调用真实 API
-        if (SKYWORK_CONFIG.apiKey) {
-            try {
-                const result = await callSkyworkAPI({
-                    topic,
-                    slide_count,
-                    style,
-                    language
-                });
-                return res.json(result);
-            } catch (skyworkError) {
-                console.error('Skywork API 调用失败:', skyworkError.message);
-                // 降级到模拟数据
-            }
-        }
-
-        // 返回模拟数据（用于测试）
-        const mockResult = generateMockPPT(topic, slide_count, style, language);
-        res.json(mockResult);
-
-    } catch (error) {
-        console.error('PPT 生成错误:', error);
-        res.status(500).json({
-            error: '生成失败，请稍后重试',
-            code: 'GENERATION_ERROR',
-            details: error.message
-        });
-    }
-});
-
-// 调用 Skywork API
-async function callSkyworkAPI(params) {
-    const response = await axios.post(
-        `${SKYWORK_CONFIG.baseUrl}/ppt/generate`,
-        {
-            model: SKYWORK_CONFIG.model,
-            prompt: params.topic,
-            options: {
-                slide_count: params.slide_count,
-                style: params.style,
-                language: params.language
-            }
-        },
-        {
-            headers: {
-                'Authorization': `Bearer ${SKYWORK_CONFIG.apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            timeout: 60000 // 60 秒超时
-        }
-    );
-
-    return {
-        slides: response.data.slides || [],
-        downloadUrl: response.data.download_url || '',
-        previewUrl: response.data.preview_url || '',
-        pptId: response.data.id || ''
-    };
+// 确保输出目录存在
+if (!fs.existsSync(OUTPUT_DIR)) {
+    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 }
 
-// 生成模拟 PPT 数据
-function generateMockPPT(topic, slideCount, style, language) {
-    const slideTemplates = {
-        business: {
-            colors: ['#1e40af', '#ffffff', '#f3f4f6'],
-            fonts: ['Arial', 'Microsoft YaHei']
-        },
-        creative: {
-            colors: ['#7c3aed', '#fbbf24', '#ffffff'],
-            fonts: ['Georgia', 'SimHei']
-        },
-        minimal: {
-            colors: ['#000000', '#ffffff', '#e5e7eb'],
-            fonts: ['Helvetica', 'PingFang SC']
-        },
-        education: {
-            colors: ['#059669', '#dbeafe', '#ffffff'],
-            fonts: ['Verdana', 'KaiTi']
-        },
-        tech: {
-            colors: ['#0891b2', '#0f172a', '#ffffff'],
-            fonts: ['Consolas', 'Microsoft YaHei']
+/**
+ * 创建 PPT 生成任务
+ */
+app.post('/api/ppt/generate', async (req, res) => {
+    try {
+        const { topic, slideCount = 10, style = 'business', language = 'zh' } = req.body;
+
+        if (!topic) {
+            return res.status(400).json({ error: '主题不能为空' });
         }
-    };
 
-    const styleConfig = slideTemplates[style] || slideTemplates.business;
+        // 创建任务 ID
+        const taskId = uuidv4();
+        const timestamp = Date.now();
+        const outputPath = path.join(OUTPUT_DIR, `ppt_${taskId}.pptx`);
+        const logPath = path.join(OUTPUT_DIR, `ppt_${taskId}.log`);
 
-    const slides = [];
-    
-    // 封面页
-    slides.push({
-        number: 1,
-        title: topic,
-        subtitle: `AI 自动生成 · ${new Date().toLocaleDateString('zh-CN')}`,
-        type: 'cover',
-        content: '',
-        style: styleConfig
-    });
-
-    // 目录页
-    slides.push({
-        number: 2,
-        title: '目录',
-        type: 'toc',
-        content: [
-            '背景介绍',
-            '核心内容',
-            '案例分析',
-            '总结展望'
-        ],
-        style: styleConfig
-    });
-
-    // 内容页
-    for (let i = 3; i <= slideCount; i++) {
-        slides.push({
-            number: i,
-            title: `第${i-1}章：${topic} - 要点${i-2}`,
-            type: 'content',
-            content: [
-                `核心观点 ${i-2}-1：详细说明内容`,
-                `核心观点 ${i-2}-2：详细说明内容`,
-                `核心观点 ${i-2}-3：详细说明内容`,
-                `数据支持：XX 增长率达到 XX%`,
-                `案例分析：成功实践分享`
-            ],
-            style: styleConfig
-        });
-    }
-
-    // 总结页
-    slides.push({
-        number: slideCount,
-        title: '总结与展望',
-        type: 'summary',
-        content: [
-            '核心要点回顾',
-            '下一步行动计划',
-            'Q&A 问答环节'
-        ],
-        style: styleConfig
-    });
-
-    return {
-        slides,
-        metadata: {
+        // 保存任务信息
+        tasks.set(taskId, {
+            id: taskId,
             topic,
             slideCount,
             style,
             language,
-            createdAt: new Date().toISOString()
-        },
-        downloadUrl: '/api/ppt/download',
-        previewUrl: '/api/ppt/preview'
-    };
-}
+            status: 'pending',
+            progress: 0,
+            stage: '准备中',
+            createdAt: timestamp,
+            outputPath,
+            logPath,
+            downloadUrl: null
+        });
 
-// PPT 下载接口（生成 PPTX 文件）
-app.get('/api/ppt/download', async (req, res) => {
-    try {
-        // 这里可以集成 PPTX 库生成真实的 PPT 文件
-        // 目前返回一个示例文件
-        
-        const pptxContent = `PPT 文件内容
-生成时间：${new Date().toISOString()}
+        // 构建 Skywork PPT 命令
+        const styleMap = {
+            business: '商务专业',
+            creative: '创意设计',
+            minimal: '简约现代',
+            education: '教育培训',
+            tech: '科技感'
+        };
 
-这是一个示例 PPT 文件。
-实际使用中，这里会生成真实的.pptx 文件。
+        const query = `${topic}，${slideCount}页，${styleMap[style] || style}风格`;
+        const langMap = { zh: 'Chinese', en: 'English', ja: 'Japanese', ko: 'Korean' };
+        const skyworkLang = langMap[language] || 'Chinese';
 
-建议使用以下库来生成 PPT:
-- pptxgenjs (Node.js)
-- python-pptx (Python)
-`;
+        const command = `cd ${SKYWORK_SKILL_DIR} && python3 scripts/run_ppt_write.py "${query}" \\
+            --language ${skyworkLang} \\
+            --log_path "${logPath}" \\
+            -o "${outputPath}"`;
 
-        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
-        res.setHeader('Content-Disposition', 'attachment; filename="presentation.pptx"');
-        res.send(pptxContent);
+        console.log(`[Task ${taskId}] 开始生成 PPT: ${topic}`);
+        console.log(`[Task ${taskId}] 命令：${command}`);
+
+        // 执行命令（后台运行）
+        exec(command, {
+            timeout: 600000, // 10 分钟超时
+            maxBuffer: 1024 * 1024 * 10
+        }, (error, stdout, stderr) => {
+            if (error) {
+                console.error(`[Task ${taskId}] 执行错误:`, error);
+                updateTask(taskId, {
+                    status: 'error',
+                    error: error.message
+                });
+                return;
+            }
+
+            // 检查日志文件获取最终结果
+            if (fs.existsSync(logPath)) {
+                const logContent = fs.readFileSync(logPath, 'utf-8');
+                const doneMatch = logContent.match(/\[DONE\] saved=(.+?) download_url=(.+)/);
+                
+                if (doneMatch) {
+                    updateTask(taskId, {
+                        status: 'completed',
+                        progress: 100,
+                        stage: '完成',
+                        outputPath: doneMatch[1],
+                        downloadUrl: doneMatch[2]
+                    });
+                } else {
+                    updateTask(taskId, {
+                        status: 'error',
+                        error: '生成完成但未找到输出文件'
+                    });
+                }
+            }
+        });
+
+        // 启动进度监控
+        startProgressMonitoring(taskId, logPath);
+
+        // 立即返回任务 ID
+        res.json({
+            success: true,
+            taskId,
+            message: 'PPT 生成任务已创建',
+            estimatedTime: '5-10 分钟'
+        });
 
     } catch (error) {
-        res.status(500).json({ error: '下载失败' });
+        console.error('创建任务失败:', error);
+        res.status(500).json({ error: error.message });
     }
 });
 
-// PPT 预览接口
-app.get('/api/ppt/preview', (req, res) => {
+/**
+ * 获取任务状态
+ */
+app.get('/api/ppt/status/:taskId', (req, res) => {
+    const { taskId } = req.params;
+    const task = tasks.get(taskId);
+
+    if (!task) {
+        return res.status(404).json({ error: '任务不存在' });
+    }
+
     res.json({
-        message: '预览功能开发中',
-        slides: []
+        success: true,
+        task: {
+            id: task.id,
+            status: task.status,
+            progress: task.progress,
+            stage: task.stage,
+            topic: task.topic,
+            createdAt: task.createdAt,
+            downloadUrl: task.downloadUrl,
+            error: task.error
+        }
     });
 });
 
-// 错误处理中间件
-app.use((err, req, res, next) => {
-    console.error('Unhandled error:', err);
-    res.status(500).json({
-        error: '服务器内部错误',
-        code: 'INTERNAL_ERROR'
+/**
+ * 获取所有任务（用于管理界面）
+ */
+app.get('/api/ppt/tasks', (req, res) => {
+    const allTasks = Array.from(tasks.values()).map(task => ({
+        id: task.id,
+        topic: task.topic,
+        status: task.status,
+        progress: task.progress,
+        stage: task.stage,
+        createdAt: task.createdAt,
+        downloadUrl: task.downloadUrl
+    }));
+
+    // 按创建时间倒序
+    allTasks.sort((a, b) => b.createdAt - a.createdAt);
+
+    res.json({
+        success: true,
+        tasks: allTasks
     });
 });
 
-// 404 处理
-app.use((req, res) => {
-    res.status(404).json({
-        error: '接口不存在',
-        code: 'NOT_FOUND'
+/**
+ * 下载 PPT 文件
+ */
+app.get('/api/ppt/download/:taskId', (req, res) => {
+    const { taskId } = req.params;
+    const task = tasks.get(taskId);
+
+    if (!task) {
+        return res.status(404).json({ error: '任务不存在' });
+    }
+
+    if (task.status !== 'completed' || !task.outputPath) {
+        return res.status(400).json({ error: 'PPT 尚未生成完成' });
+    }
+
+    if (!fs.existsSync(task.outputPath)) {
+        return res.status(404).json({ error: 'PPT 文件不存在' });
+    }
+
+    const filename = `PPT_${task.topic.slice(0, 20)}.pptx`;
+    res.download(task.outputPath, filename);
+});
+
+/**
+ * 删除任务
+ */
+app.delete('/api/ppt/task/:taskId', (req, res) => {
+    const { taskId } = req.params;
+    const task = tasks.get(taskId);
+
+    if (!task) {
+        return res.status(404).json({ error: '任务不存在' });
+    }
+
+    // 删除输出文件
+    if (task.outputPath && fs.existsSync(task.outputPath)) {
+        fs.unlinkSync(task.outputPath);
+    }
+
+    // 删除日志文件
+    if (task.logPath && fs.existsSync(task.logPath)) {
+        fs.unlinkSync(task.logPath);
+    }
+
+    tasks.delete(taskId);
+
+    res.json({ success: true, message: '任务已删除' });
+});
+
+/**
+ * 更新任务状态
+ */
+function updateTask(taskId, updates) {
+    const task = tasks.get(taskId);
+    if (task) {
+        Object.assign(task, updates);
+        console.log(`[Task ${taskId}] 状态更新：${updates.status} (${updates.progress}%)`);
+    }
+}
+
+/**
+ * 轮询日志文件监控进度
+ */
+function startProgressMonitoring(taskId, logPath) {
+    let lastRead = 0;
+    let pid = null;
+
+    const monitorInterval = setInterval(() => {
+        if (!fs.existsSync(logPath)) {
+            return; // 日志文件还未创建
+        }
+
+        try {
+            const content = fs.readFileSync(logPath, 'utf-8');
+            const lines = content.split('\n');
+
+            // 提取 PID
+            const pidMatch = content.match(/\[PID\] (\d+)/);
+            if (pidMatch && !pid) {
+                pid = pidMatch[1];
+                console.log(`[Task ${taskId}] 进程 PID: ${pid}`);
+            }
+
+            // 解析进度
+            for (let i = lastRead; i < lines.length; i++) {
+                const line = lines[i];
+
+                // 进度更新 [PING] 30% | Generating slides
+                const pingMatch = line.match(/\[PING\] (\d+)% \| (.+)/);
+                if (pingMatch) {
+                    updateTask(taskId, {
+                        progress: parseInt(pingMatch[1]),
+                        stage: pingMatch[2].trim()
+                    });
+                }
+
+                // 阶段更新 [PHASE] ...
+                const phaseMatch = line.match(/\[PHASE\] (.+)/);
+                if (phaseMatch) {
+                    updateTask(taskId, {
+                        stage: phaseMatch[1].trim()
+                    });
+                }
+
+                // 错误 [ERROR] ...
+                const errorMatch = line.match(/\[ERROR\] (.+)/);
+                if (errorMatch) {
+                    updateTask(taskId, {
+                        status: 'error',
+                        error: errorMatch[1].trim()
+                    });
+                    clearInterval(monitorInterval);
+                }
+
+                // 完成 [DONE] ...
+                const doneMatch = line.match(/\[DONE\]/);
+                if (doneMatch) {
+                    updateTask(taskId, {
+                        status: 'completed',
+                        progress: 100,
+                        stage: '完成'
+                    });
+                    clearInterval(monitorInterval);
+                }
+            }
+
+            lastRead = lines.length;
+
+        } catch (error) {
+            console.error(`[Task ${taskId}] 读取日志失败:`, error);
+        }
+
+        // 检查任务是否已结束
+        const task = tasks.get(taskId);
+        if (task && (task.status === 'completed' || task.status === 'error')) {
+            clearInterval(monitorInterval);
+        }
+
+    }, 3000); // 每 3 秒检查一次
+
+    // 5 分钟后自动停止监控
+    setTimeout(() => clearInterval(monitorInterval), 300000);
+}
+
+/**
+ * 健康检查
+ */
+app.get('/api/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        service: 'ppt-generator-server',
+        timestamp: Date.now(),
+        activeTasks: tasks.size
     });
 });
 
 // 启动服务器
 app.listen(PORT, () => {
-    console.log(`
-╔═══════════════════════════════════════════════╗
-║     AI PPT Generator Server                   ║
-╠═══════════════════════════════════════════════╣
-║  Status: Running                              ║
-║  Port: ${PORT}                                    ║
-║  Skywork API: ${SKYWORK_CONFIG.apiKey ? 'Configured' : 'Not Configured'}              ║
-║                                               ║
-║  Endpoints:                                   ║
-║  - GET  /health                               ║
-║  - POST /api/ppt                              ║
-║  - GET  /api/ppt/download                     ║
-║  - GET  /api/ppt/preview                      ║
-╚═══════════════════════════════════════════════╝
-    `);
+    console.log(`🚀 AI PPT 生成器后端服务已启动`);
+    console.log(`📍 监听端口：http://localhost:${PORT}`);
+    console.log(`📝 API 端点:`);
+    console.log(`   POST /api/ppt/generate    - 创建生成任务`);
+    console.log(`   GET  /api/ppt/status/:id  - 查询任务状态`);
+    console.log(`   GET  /api/ppt/download/:id - 下载 PPT 文件`);
+    console.log(`   GET  /api/health          - 健康检查`);
+    console.log(`\n💡 Skywork 技能目录：${SKYWORK_SKILL_DIR}`);
+    console.log(`💾 输出目录：${OUTPUT_DIR}`);
+});
+
+// 优雅关闭
+process.on('SIGINT', () => {
+    console.log('\n👋 服务正在关闭...');
+    
+    // 清理未完成的任务
+    for (const [taskId, task] of tasks.entries()) {
+        if (task.status === 'pending' || task.status === 'processing') {
+            console.log(`清理任务 ${taskId}`);
+            if (task.outputPath && fs.existsSync(task.outputPath)) {
+                fs.unlinkSync(task.outputPath);
+            }
+        }
+    }
+    
+    process.exit(0);
 });
