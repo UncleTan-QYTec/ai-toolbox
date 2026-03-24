@@ -1,229 +1,167 @@
-# AI PPT 生成器 📊
+# AI PPT 生成器
 
-基于 Skywork.ai API 的智能演示文稿生成服务
+基于 Skywork.ai API 的 PPT 自动生成工具。
 
-## 功能特点
+## 功能
 
-- ✨ **AI 生成**：输入主题，自动生成完整 PPT
-- 🎨 **多种风格**：商务、创意、简约、教育、科技
-- 📄 **灵活页数**：5-30 页可选
-- 🌍 **多语言**：支持中文、英文
-- 💾 **历史记录**：本地保存生成记录
-- 📥 **一键下载**：生成可编辑的 PPTX 文件
+- ✨ 输入主题自动生成 PPT
+- 📊 支持 5-20 页可选
+- 🎨 5 种风格模板（商务、创意、简约、教育、科技）
+- 🌐 中英文双语支持
+- 💾 本地历史记录
 
-## 快速开始
+## 配置 Skywork API
 
-### 前端使用（无需后端）
+### 1. 获取 API Key
 
-1. 访问：`https://uncletan-qytec.github.io/ai-toolbox/ppt-generator/`
-2. 输入 PPT 主题
-3. 选择页数和风格
-4. 点击"开始生成"
+访问 [Skywork 开放平台](https://platform.skywork.ai/) 注册并获取 API Key。
 
-> 注意：纯前端模式下使用模拟数据演示，需要真实生成请部署后端服务
+### 2. 配置方式
 
-### 后端部署
+#### 方式 A：直接配置（前端演示）
 
-#### 1. 安装依赖
+编辑 `app.js`，修改 CONFIG：
 
-```bash
-cd ppt-generator
-npm install
+```javascript
+const CONFIG = {
+    skyworkApiUrl: 'https://api.skywork.ai/v1/ppt/generate',
+    skyworkApiKey: 'YOUR_API_KEY_HERE'
+};
 ```
 
-#### 2. 配置 API Key
+⚠️ **注意**：前端直接配置 API Key 仅用于测试，生产环境请使用后端代理！
 
-```bash
-cp .env.example .env
+#### 方式 B：后端代理（推荐）
+
+创建 `config.js`：
+
+```javascript
+const CONFIG = {
+    skyworkApiUrl: '/api/ppt/generate',  // 你的后端代理地址
+    skyworkApiKey: ''  // 后端处理
+};
 ```
 
-编辑 `.env` 文件，填入你的 Skywork API Key：
+### 3. Skywork API 请求格式
 
-```
-SKYWORK_API_KEY=your_actual_api_key
-```
+```json
+POST https://api.skywork.ai/v1/ppt/generate
 
-获取 API Key: https://platform.skywork.ai/
+Headers:
+  Authorization: Bearer YOUR_API_KEY
+  Content-Type: application/json
 
-#### 3. 启动服务
-
-```bash
-# 生产环境
-npm start
-
-# 开发环境（自动重启）
-npm run dev
-```
-
-服务启动后访问：http://localhost:3000
-
-## API 接口
-
-### 生成 PPT
-
-```bash
-POST /api/ppt
-Content-Type: application/json
-
+Body:
 {
   "topic": "2024 年人工智能发展趋势",
-  "slide_count": 10,
+  "slideCount": 10,
   "style": "business",
   "language": "zh"
 }
 ```
 
-**响应：**
+### 4. 响应格式
 
 ```json
 {
   "slides": [
     {
       "number": 1,
-      "title": "封面页标题",
-      "content": "页面内容...",
+      "title": "封面标题",
+      "content": ["要点 1", "要点 2"],
       "type": "cover"
     }
   ],
-  "downloadUrl": "/api/ppt/download",
-  "previewUrl": "/api/ppt/preview"
+  "downloadUrl": "https://...",
+  "pptId": "xxx"
 }
 ```
 
-### 健康检查
+## 本地运行
 
 ```bash
-GET /health
+cd ppt-generator
+
+# 方式 1: Python
+python3 -m http.server 8080
+
+# 方式 2: Node.js
+npx serve
 ```
 
-## 配置选项
+访问 `http://localhost:8080`
 
-### PPT 风格
+## 部署
 
-| 风格 | 说明 | 适用场景 |
-|------|------|----------|
-| `business` | 商务专业 | 工作汇报、商业计划 |
-| `creative` | 创意设计 | 创意提案、艺术设计 |
-| `minimal` | 简约现代 | 学术报告、简洁演示 |
-| `education` | 教育培训 | 课件、培训材料 |
-| `tech` | 科技感 | 技术分享、产品介绍 |
+### 静态部署（演示模式）
 
-### 页数范围
+直接部署到 GitHub Pages 即可，使用模拟数据。
 
-- 最少：5 页
-- 最多：30 页
-- 推荐：10-15 页
+### 生产部署（真实 API）
 
-## 集成到网站
+需要后端服务代理 API 请求：
 
-### 方式 1：GitHub Pages
+```
+前端 → 你的后端 → Skywork API
+```
 
-前端已部署到：https://uncletan-qytec.github.io/ai-toolbox/ppt-generator/
-
-### 方式 2：自建服务
-
-1. 部署后端服务到服务器
-2. 修改 `app.js` 中的 `API_CONFIG.baseUrl`
-3. 重新部署前端
+后端示例（Node.js + Express）：
 
 ```javascript
-const API_CONFIG = {
-    baseUrl: 'https://your-server.com/api/ppt'
-};
-```
-
-### 方式 3：Vercel/Netlify
-
-```bash
-# 安装 Vercel CLI
-npm i -g vercel
-
-# 部署
-vercel
-```
-
-## Skywork API 对接
-
-### 获取 API Key
-
-1. 访问 https://platform.skywork.ai/
-2. 注册/登录账号
-3. 进入 API 管理页面
-4. 创建新的 API Key
-
-### API 调用示例
-
-```python
-import requests
-
-response = requests.post(
-    'https://api.skywork.ai/v1/ppt/generate',
-    headers={
-        'Authorization': 'Bearer YOUR_API_KEY'
+app.post('/api/ppt/generate', async (req, res) => {
+  const response = await fetch('https://api.skywork.ai/v1/ppt/generate', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.SKYWORK_API_KEY}`,
+      'Content-Type': 'application/json'
     },
-    json={
-        'model': 'skywork-ppt-v1',
-        'prompt': '人工智能发展趋势',
-        'options': {
-            'slide_count': 10,
-            'style': 'business'
-        }
-    }
-)
-
-print(response.json())
+    body: JSON.stringify(req.body)
+  });
+  const data = await response.json();
+  res.json(data);
+});
 ```
 
-## 本地开发
+## 自定义
 
-```bash
-# 克隆项目
-git clone https://github.com/UncleTan-QYTec/ai-toolbox.git
+### 修改默认配置
 
-# 进入目录
-cd ai-toolbox/ppt-generator
+编辑 `index.html` 中的默认值：
 
-# 安装依赖
-npm install
-
-# 配置环境变量
-cp .env.example .env
-# 编辑 .env 填入 API Key
-
-# 启动开发服务器
-npm run dev
+```html
+<select id="slideCount">
+    <option value="10" selected>10 页（标准版）</option>
+</select>
 ```
 
-## 技术栈
+### 添加新风格
 
-- **前端**：HTML5, CSS3, JavaScript (ES6+)
-- **后端**：Node.js, Express
-- **AI**：Skywork.ai API
-- **部署**：GitHub Pages, Vercel
+编辑 `app.js` 中的 `getStyleName` 函数和选项。
 
-## 常见问题
+## 集成到你的网站
 
-### Q: 生成失败怎么办？
-A: 检查网络连接、API Key 是否正确，或查看服务器日志
+在你的网站中添加链接：
 
-### Q: 可以自定义模板吗？
-A: 当前版本使用 AI 自动生成，自定义模板功能开发中
+```html
+<a href="/ai-toolbox/ppt-generator/" class="tool-card">
+    <h3>📊 AI PPT 生成器</h3>
+    <p>输入主题，30 秒生成专业 PPT</p>
+</a>
+```
 
-### Q: 支持导出其他格式吗？
-A: 目前支持 PPTX，PDF 格式开发中
+## 问题排查
 
-## 更新日志
+1. **生成失败**：检查 API Key 是否正确
+2. **跨域错误**：使用后端代理方式
+3. **下载不了**：需要后端生成真实 .pptx 文件
 
-### v1.0.0 (2024-03-24)
-- ✨ 初始版本发布
-- ✨ 支持 5 种 PPT 风格
-- ✨ 历史记录功能
-- ✨ Skywork API 集成
+## 扩展功能
 
-## 许可证
-
-MIT License
+- [ ] 支持上传大纲生成
+- [ ] 支持自定义模板
+- [ ] 支持导出 PDF
+- [ ] 支持在线编辑
 
 ---
 
-Made with ❤️ by 清月科技
+Powered by Skywork.ai | Made with ❤️ by 清月科技
