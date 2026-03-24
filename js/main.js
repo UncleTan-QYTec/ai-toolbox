@@ -1,11 +1,13 @@
 // AI 工具箱 - 主脚本
 
 let toolsData = null;
+let myToolsData = null;
 let activeCategory = 'all';
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', async () => {
     await loadToolsData();
+    await loadMyToolsData();
     renderCategoryTabs();
     renderTools('all');
     setupEventListeners();
@@ -22,6 +24,17 @@ async function loadToolsData() {
     }
 }
 
+// 加载自定义工具数据
+async function loadMyToolsData() {
+    try {
+        const response = await fetch('data/my-tools.json');
+        myToolsData = await response.json();
+    } catch (error) {
+        console.log('未找到自定义工具配置，使用默认值');
+        myToolsData = null;
+    }
+}
+
 // 渲染分类标签
 function renderCategoryTabs() {
     const tabsContainer = document.getElementById('categoryTabs');
@@ -30,6 +43,16 @@ function renderCategoryTabs() {
     const allTab = createCategoryTab('all', '🔥', '全部');
     allTab.classList.add('active');
     tabsContainer.appendChild(allTab);
+    
+    // 我的工具标签（如果有自定义工具）
+    if (myToolsData && myToolsData.tools && myToolsData.tools.length > 0) {
+        const myToolsTab = createCategoryTab(
+            myToolsData.category.id, 
+            myToolsData.category.icon, 
+            myToolsData.category.name
+        );
+        tabsContainer.appendChild(myToolsTab);
+    }
     
     // 各个分类标签
     toolsData.categories.forEach(category => {
@@ -73,8 +96,17 @@ function renderTools(categoryId) {
     
     let tools = [];
     
-    if (categoryId === 'all') {
-        // 显示所有工具
+    // 检查是否是"我的工具"分类
+    if (myToolsData && categoryId === myToolsData.category.id) {
+        tools = myToolsData.tools.map(tool => ({
+            ...tool,
+            categoryId: myToolsData.category.id,
+            categoryIcon: myToolsData.category.icon,
+            categoryName: myToolsData.category.name,
+            isCustom: true
+        }));
+    } else if (categoryId === 'all') {
+        // 显示所有工具（包括自定义工具）
         toolsData.categories.forEach(category => {
             tools = tools.concat(category.tools.map(tool => ({
                 ...tool,
@@ -83,6 +115,16 @@ function renderTools(categoryId) {
                 categoryName: category.name
             })));
         });
+        // 添加自定义工具
+        if (myToolsData && myToolsData.tools) {
+            tools = myToolsData.tools.map(tool => ({
+                ...tool,
+                categoryId: myToolsData.category.id,
+                categoryIcon: myToolsData.category.icon,
+                categoryName: myToolsData.category.name,
+                isCustom: true
+            })).concat(tools);
+        }
     } else {
         // 显示指定分类工具
         const category = toolsData.categories.find(c => c.id === categoryId);
@@ -109,10 +151,19 @@ function createToolCard(tool, index) {
     card.className = 'tool-card';
     card.style.animationDelay = `${index * 0.05}s`;
     
+    // 自定义工具添加特殊标记
+    const customBadge = tool.isCustom ? '<span class="custom-badge">⭐ 自制</span>' : '';
+    
+    // 标签显示
+    const tagsHtml = tool.tags ? 
+        `<div class="tool-tags">${tool.tags.map(tag => `<span class="tool-tag">${tag}</span>`).join('')}</div>` : '';
+    
     card.innerHTML = `
+        ${customBadge}
         <a href="${tool.url}" target="_blank" rel="noopener noreferrer">
             <h3 class="tool-name">${tool.name}</h3>
             <p class="tool-desc">${tool.desc}</p>
+            ${tagsHtml}
             <span class="tool-link">
                 访问网站 →
             </span>
