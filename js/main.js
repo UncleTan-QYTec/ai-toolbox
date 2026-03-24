@@ -149,17 +149,21 @@ function renderTools(categoryId) {
 function createToolCard(tool, index) {
     const card = document.createElement('div');
     card.className = 'tool-card';
+    if (tool.featured) card.classList.add('featured');
     card.style.animationDelay = `${index * 0.05}s`;
     
     // 自定义工具添加特殊标记
     const customBadge = tool.isCustom ? '<span class="custom-badge">⭐ 自制</span>' : '';
+    
+    // 推荐工具标记
+    const featuredBadge = tool.featured ? '<span class="featured-badge">🔥 本站推荐</span>' : '';
     
     // 标签显示
     const tagsHtml = tool.tags ? 
         `<div class="tool-tags">${tool.tags.map(tag => `<span class="tool-tag">${tag}</span>`).join('')}</div>` : '';
     
     card.innerHTML = `
-        ${customBadge}
+        ${featuredBadge}${customBadge}
         <a href="${tool.url}" target="_blank" rel="noopener noreferrer">
             <h3 class="tool-name">${tool.name}</h3>
             <p class="tool-desc">${tool.desc}</p>

@@ -44,6 +44,7 @@
       "name": "AI 办公",
       "icon": "💼",
       "tools": [
+        { "name": "🔥 AI PPT 生成器", "url": "./ppt-generator/", "desc": "本站自研 - 输入主题自动生成 PPT", "featured": true },
         { "name": "Gamma", "url": "https://gamma.app/", "desc": "AI PPT 生成" },
         { "name": "Tome", "url": "https://tome.app/", "desc": "AI 演示文稿" },
         { "name": "Notion AI", "url": "https://www.notion.so/ai", "desc": "AI 笔记助手" },

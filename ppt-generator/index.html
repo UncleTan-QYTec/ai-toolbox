@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI PPT 生成器 - 智能演示文稿制作</title>
+    <meta name="description" content="输入主题，AI 自动生成精美 PPT 演示文稿">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+</head>
+<body>
+    <!-- 头部导航 -->
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <a href="../index.html" class="logo-link">
+                    <span class="logo-icon">🚀</span>
+                    <h1>AI 工具箱</h1>
+                </a>
+            </div>
+            <nav class="nav">
+                <a href="../index.html" class="nav-link">返回首页</a>
+                <a href="#generate" class="nav-link active">生成 PPT</a>
+                <a href="#history" class="nav-link">历史记录</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero 区域 -->
+    <section class="hero ppt-hero">
+        <div class="container">
+            <h2 class="hero-title">📊 AI PPT 生成器</h2>
+            <p class="hero-subtitle">输入主题，30 秒生成专业演示文稿</p>
+        </div>
+    </section>
+
+    <!-- 生成区域 -->
+    <section id="generate" class="generate-section">
+        <div class="container">
+            <div class="generator-card">
+                <!-- 步骤 1：输入主题 -->
+                <div class="step" id="step1">
+                    <div class="step-header">
+                        <span class="step-number">1</span>
+                        <h3>输入 PPT 主题</h3>
+                    </div>
+                    <div class="input-group">
+                        <textarea 
+                            id="topicInput" 
+                            placeholder="请输入 PPT 主题，例如：&#10;• 2024 年人工智能发展趋势&#10;• 新能源汽车市场分析&#10;• 项目管理方法论培训"
+                            rows="4"
+                        ></textarea>
+                        <div class="input-hints">
+                            <span class="hint">💡 提示：描述越详细，生成的 PPT 越精准</span>
+                        </div>
+                    </div>
+                    
+                    <div class="options-group">
+                        <div class="option-item">
+                            <label>页数</label>
+                            <select id="slideCount">
+                                <option value="5">5 页（精简版）</option>
+                                <option value="10" selected>10 页（标准版）</option>
+                                <option value="15">15 页（详细版）</option>
+                                <option value="20">20 页（完整版）</option>
+                            </select>
+                        </div>
+                        <div class="option-item">
+                            <label>风格</label>
+                            <select id="style">
+                                <option value="business">商务专业</option>
+                                <option value="creative">创意设计</option>
+                                <option value="minimal">简约现代</option>
+                                <option value="education">教育培训</option>
+                                <option value="tech">科技感</option>
+                            </select>
+                        </div>
+                        <div class="option-item">
+                            <label>语言</label>
+                            <select id="language">
+                                <option value="zh">中文</option>
+                                <option value="en">English</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button class="btn-primary btn-generate" onclick="generatePPT()">
+                        <span class="btn-text">✨ 开始生成</span>
+                        <span class="btn-loading" style="display: none;">
+                            <span class="spinner"></span>
+                            正在生成中...
+                        </span>
+                    </button>
+                </div>
+
+                <!-- 步骤 2：生成中 -->
+                <div class="step" id="step2" style="display: none;">
+                    <div class="loading-state">
+                        <div class="loading-animation">
+                            <div class="pulse-ring"></div>
+                            <span class="loading-icon">🎨</span>
+                        </div>
+                        <h3>AI 正在创作中...</h3>
+                        <div class="loading-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="progressFill"></div>
+                            </div>
+                            <span class="progress-text" id="progressText">正在分析主题...</span>
+                        </div>
+                        <div class="loading-steps">
+                            <div class="step-item active" id="loadStep1">
+                                <span class="step-icon">📝</span>
+                                <span>生成大纲</span>
+                            </div>
+                            <div class="step-item" id="loadStep2">
+                                <span class="step-icon">🎨</span>
+                                <span>设计页面</span>
+                            </div>
+                            <div class="step-item" id="loadStep3">
+                                <span class="step-icon">✨</span>
+                                <span>优化排版</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 步骤 3：预览和下载 -->
+                <div class="step" id="step3" style="display: none;">
+                    <div class="success-header">
+                        <span class="success-icon">✅</span>
+                        <h3>PPT 生成完成！</h3>
+                    </div>
+                    
+                    <div class="ppt-preview" id="pptPreview">
+                        <!-- 动态生成预览 -->
+                    </div>
+
+                    <div class="action-buttons">
+                        <button class="btn-primary" onclick="downloadPPT()">
+                            📥 下载 PPT
+                        </button>
+                        <button class="btn-secondary" onclick="regenerate()">
+                            🔄 重新生成
+                        </button>
+                        <button class="btn-outline" onclick="editPPT()">
+                            ✏️ 编辑内容
+                        </button>
+                    </div>
+
+                    <div class="download-info">
+                        <p>📄 文件格式：.pptx（PowerPoint）</p>
+                        <p>📊 生成页数：<span id="slideCountResult">10</span> 页</p>
+                        <p>⏱️ 生成时间：<span id="generateTime">30</span> 秒</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 历史记录 -->
+    <section id="history" class="history-section">
+        <div class="container">
+            <h2 class="section-title">📋 生成历史</h2>
+            <div class="history-list" id="historyList">
+                <p class="empty-state">暂无历史记录</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="container">
+            <p>Powered by Skywork.ai | Made with ❤️ by 清月科技</p>
+        </div>
+    </footer>
+
+    <!-- 提示框 -->
+    <div class="toast" id="toast"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
