@@ -1,0 +1,139 @@
+{
+  "categories": [
+    {
+      "id": "writing",
+      "name": "AI 写作",
+      "icon": "✍️",
+      "tools": [
+        { "name": "DeepSeek", "url": "https://www.deepseek.com/", "desc": "强大的 AI 写作助手" },
+        { "name": "文心一言", "url": "https://yiyan.baidu.com/", "desc": "百度 AI 写作平台" },
+        { "name": "通义千问", "url": "https://tongyi.aliyun.com/", "desc": "阿里 AI 助手" },
+        { "name": "Kimi", "url": "https://kimi.moonshot.cn/", "desc": "月之暗面 AI 助手" },
+        { "name": "智谱清言", "url": "https://chatglm.cn/", "desc": "清华智谱 AI" },
+        { "name": "讯飞星火", "url": "https://xinghuo.xfyun.cn/", "desc": "科大讯飞 AI" }
+      ]
+    },
+    {
+      "id": "image",
+      "name": "AI 图片",
+      "icon": "🎨",
+      "tools": [
+        { "name": "Midjourney", "url": "https://www.midjourney.com/", "desc": "顶级 AI 绘画工具" },
+        { "name": "Stable Diffusion", "url": "https://stability.ai/", "desc": "开源 AI 图像生成" },
+        { "name": "DALL-E 3", "url": "https://openai.com/dall-e-3/", "desc": "OpenAI 图像生成" },
+        { "name": "Leonardo.ai", "url": "https://leonardo.ai/", "desc": "专业 AI 设计工具" },
+        { "name": "Remove.bg", "url": "https://www.remove.bg/", "desc": "一键抠图" },
+        { "name": "Upscale.media", "url": "https://www.upscale.media/", "desc": "AI 图片放大" }
+      ]
+    },
+    {
+      "id": "video",
+      "name": "AI 视频",
+      "icon": "🎬",
+      "tools": [
+        { "name": "Runway", "url": "https://runwayml.com/", "desc": "AI 视频生成平台" },
+        { "name": "Pika Labs", "url": "https://pika.art/", "desc": "AI 视频创作" },
+        { "name": "HeyGen", "url": "https://www.heygen.com/", "desc": "AI 数字人" },
+        { "name": "D-ID", "url": "https://www.d-id.com/", "desc": "AI 人脸动画" },
+        { "name": "剪映", "url": "https://www.capcut.cn/", "desc": "智能视频剪辑" },
+        { "name": "Sora", "url": "https://openai.com/sora/", "desc": "OpenAI 视频模型" }
+      ]
+    },
+    {
+      "id": "office",
+      "name": "AI 办公",
+      "icon": "💼",
+      "tools": [
+        { "name": "Gamma", "url": "https://gamma.app/", "desc": "AI PPT 生成" },
+        { "name": "Tome", "url": "https://tome.app/", "desc": "AI 演示文稿" },
+        { "name": "Notion AI", "url": "https://www.notion.so/ai", "desc": "AI 笔记助手" },
+        { "name": "飞书智能伙伴", "url": "https://www.feishu.cn/", "desc": "企业 AI 助手" },
+        { "name": "钉钉 AI", "url": "https://www.dingtalk.com/", "desc": "阿里办公 AI" },
+        { "name": "WPS AI", "url": "https://www.wps.cn/", "desc": "金山办公 AI" }
+      ]
+    },
+    {
+      "id": "coding",
+      "name": "AI 编程",
+      "icon": "💻",
+      "tools": [
+        { "name": "GitHub Copilot", "url": "https://github.com/features/copilot", "desc": "AI 代码助手" },
+        { "name": "Cursor", "url": "https://cursor.sh/", "desc": "AI 代码编辑器" },
+        { "name": "Codeium", "url": "https://codeium.com/", "desc": "免费 AI 编程" },
+        { "name": "通义灵码", "url": "https://tongyi.aliyun.com/lingma/", "desc": "阿里 AI 编程" },
+        { "name": "CodeWhisperer", "url": "https://aws.amazon.com/codewhisperer/", "desc": "AWS 代码助手" },
+        { "name": " Devin", "url": "https://www.cognition.ai/", "desc": "AI 软件工程师" }
+      ]
+    },
+    {
+      "id": "design",
+      "name": "AI 设计",
+      "icon": "🖌️",
+      "tools": [
+        { "name": "Canva AI", "url": "https://www.canva.com/", "desc": "AI 设计平台" },
+        { "name": "Figma AI", "url": "https://www.figma.com/", "desc": "AI 界面设计" },
+        { "name": "Looka", "url": "https://looka.com/", "desc": "AI Logo 设计" },
+        { "name": "Uizard", "url": "https://uizard.io/", "desc": "AI UI 设计" },
+        { "name": "Khroma", "url": "https://www.khroma.co/", "desc": "AI 配色工具" },
+        { "name": "Fontjoy", "url": "https://fontjoy.com/", "desc": "AI 字体搭配" }
+      ]
+    },
+    {
+      "id": "audio",
+      "name": "AI 音频",
+      "icon": "🎵",
+      "tools": [
+        { "name": "Suno", "url": "https://suno.com/", "desc": "AI 音乐生成" },
+        { "name": "ElevenLabs", "url": "https://elevenlabs.io/", "desc": "AI 语音合成" },
+        { "name": "Adobe Podcast", "url": "https://podcast.adobe.com/", "desc": "AI 音频增强" },
+        { "name": "Descript", "url": "https://www.descript.com/", "desc": "AI 音频编辑" },
+        { "name": "Murf.ai", "url": "https://murf.ai/", "desc": "AI 配音工具" },
+        { "name": "剪映配音", "url": "https://www.capcut.cn/", "desc": "智能语音合成" }
+      ]
+    },
+    {
+      "id": "translation",
+      "name": "AI 翻译",
+      "icon": "🌐",
+      "tools": [
+        { "name": "DeepL", "url": "https://www.deepl.com/", "desc": "高精度翻译" },
+        { "name": "谷歌翻译", "url": "https://translate.google.com/", "desc": "多语言翻译" },
+        { "name": "百度翻译", "url": "https://fanyi.baidu.com/", "desc": "中文优化翻译" },
+        { "name": "有道翻译", "url": "https://fanyi.youdao.com/", "desc": "网易翻译" },
+        { "name": "彩云小译", "url": "https://fanyi.caiyunapp.com/", "desc": "实时翻译" },
+        { "name": "沉浸式翻译", "url": "https://immersivetranslate.com/", "desc": "网页双语翻译" }
+      ]
+    },
+    {
+      "id": "search",
+      "name": "AI 搜索",
+      "icon": "🔍",
+      "tools": [
+        { "name": "Perplexity", "url": "https://www.perplexity.ai/", "desc": "AI 搜索引擎" },
+        { "name": "秘塔 AI 搜索", "url": "https://metaso.cn/", "desc": "中文 AI 搜索" },
+        { "name": "天工 AI", "url": "https://www.tiangong.cn/", "desc": "昆仑万维搜索" },
+        { "name": "360 AI 搜索", "url": "https://ai.360.cn/", "desc": "360 智能搜索" },
+        { "name": "博查", "url": "https://bocha.ai/", "desc": "深度 AI 搜索" },
+        { "name": "Felo", "url": "https://felo.ai/", "desc": "多语言 AI 搜索" }
+      ]
+    },
+    {
+      "id": "learning",
+      "name": "AI 学习",
+      "icon": "📚",
+      "tools": [
+        { "name": "可汗学院 AI", "url": "https://www.khanacademy.org/", "desc": "AI 辅导老师" },
+        { "name": "Coursera AI", "url": "https://www.coursera.org/", "desc": "AI 课程平台" },
+        { "name": "多邻国", "url": "https://www.duolingo.com/", "desc": "AI 语言学习" },
+        { "name": "Quizlet AI", "url": "https://quizlet.com/", "desc": "AI 学习卡片" },
+        { "name": "Otter.ai", "url": "https://otter.ai/", "desc": "AI 会议记录" },
+        { "name": "Grammarly", "url": "https://www.grammarly.com/", "desc": "AI 写作检查" }
+      ]
+    }
+  ],
+  "siteInfo": {
+    "title": "AI 工具箱 - 精选全球优质 AI 应用",
+    "description": "全方位 AI 资源聚合平台，精选全球优质免费 AI 应用，涵盖写作、绘画、编程、设计、视频等多个领域",
+    "keywords": "AI 工具，人工智能，AI 写作，AI 绘画，AI 编程，AI 设计"
+  }
+}
