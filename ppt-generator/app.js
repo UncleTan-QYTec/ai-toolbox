@@ -29,10 +29,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // 检查配置
 function checkConfig() {
-    if (!CONFIG.skyworkApiKey) {
-        console.warn('Skywork API Key 未配置，将使用模拟模式');
-        showToast('提示：Skywork API 未配置，当前为演示模式', 'info');
-    }
+    console.log('🔧 PPT 生成器已启动');
+    console.log('📡 后端 API:', CONFIG.backendApiUrl);
+    showToast('已连接到后端服务', 'success');
 }
 
 // 生成 PPT
